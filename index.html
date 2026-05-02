@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLIPFLOP — Political Contradiction Detector</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,700;1,300&display=swap');
+
+  :root {
+    --bg: #0a0a0a; --surface: #111111; --surface2: #1a1a1a;
+    --border: #222222; --accent: #ff2d2d; --accent2: #ffcc00;
+    --text: #e8e8e8; --muted: #666666; --green: #00ff88;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+  body::before {
+    content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 1000;
+  }
+
+  header { border-bottom: 2px solid var(--accent); padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; position: relative; }
+  header::after { content: 'BETA'; position: absolute; top: 8px; right: 40px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent); border: 1px solid var(--accent); padding: 2px 6px; letter-spacing: 3px; }
+
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 48px; letter-spacing: 4px; line-height: 1; }
+  .logo span { color: var(--accent); }
+  .tagline { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+  .ticker { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+  .ticker span { color: var(--accent2); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 48px 40px; }
+
+  .section-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .section-label::before { content: '//'; color: var(--muted); }
+
+  .search-section { margin-bottom: 48px; }
+  .search-row { display: flex; gap: 12px; margin-bottom: 16px; }
+
+  input[type="text"] { flex: 1; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 15px; padding: 14px 20px; outline: none; }
+  input[type="text"]:focus { background: var(--surface2); }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  .btn { background: var(--accent); color: #000; border: none; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; padding: 14px 32px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn:hover { background: #ff5555; transform: translateY(-1px); }
+  .btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+
+  .topic-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 5px 12px; border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.15s; letter-spacing: 1px; }
+  .chip:hover, .chip.active { border-color: var(--accent2); color: var(--accent2); background: rgba(255,204,0,0.05); }
+
+  .loading { display: none; text-align: center; padding: 60px 0; }
+  .loading.visible { display: block; }
+  .loading-text { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); letter-spacing: 2px; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  .progress-bar { width: 200px; height: 2px; background: var(--border); margin: 20px auto; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); animation: scan 1.5s ease-in-out infinite; }
+  @keyframes scan { 0% { width: 0%; margin-left: 0; } 50% { width: 60%; margin-left: 20%; } 100% { width: 0%; margin-left: 100%; } }
+
+  #results { display: none; }
+  #results.visible { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .results-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .subject-name { font-family: 'Bebas Neue', sans-serif; font-size: 56px; letter-spacing: 3px; line-height: 1; }
+  .contradiction-count { text-align: right; }
+  .count-number { font-family: 'Bebas Neue', sans-serif; font-size: 72px; line-height: 1; color: var(--accent); }
+  .count-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; }
+
+  .share-bar { display: flex; gap: 12px; margin-bottom: 32px; align-items: center; flex-wrap: wrap; }
+  .share-btn { display: flex; align-items: center; gap: 8px; background: #000; border: 1px solid #444; color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 2px; padding: 10px 20px; cursor: pointer; transition: all 0.15s; text-decoration: none; }
+  .share-btn:hover { background: #1a1a1a; border-color: #fff; }
+  .share-btn svg { width: 16px; height: 16px; fill: #fff; flex-shrink: 0; }
+
+  .networth-bar { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 32px; border: 1px solid var(--border); border-top: 3px solid var(--accent2); overflow: hidden; }
+  .networth-item { padding: 20px 24px; background: var(--surface); }
+  .networth-item:first-child { border-right: 1px solid var(--border); }
+  .networth-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .networth-value { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 2px; line-height: 1; }
+  .networth-value.before { color: var(--text); }
+  .networth-value.current { color: var(--accent2); }
+  .networth-source { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); grid-column: 1 / -1; padding: 10px 24px; border-top: 1px solid var(--border); background: var(--surface2); }
+
+  .top-donors-bar { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent); padding: 20px 24px; margin-bottom: 32px; }
+  .top-donors-value { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--text); line-height: 1.8; }
+
+  .summary-box { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent2); padding: 24px; margin-bottom: 32px; }
+  .summary-text { font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; line-height: 1.7; }
+
+  .contradiction-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); margin-bottom: 24px; overflow: hidden; animation: slideIn 0.3s ease forwards; opacity: 0; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+  .card-header { background: var(--surface2); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .card-topic { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--accent2); text-transform: uppercase; }
+  .severity { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; padding: 3px 10px; text-transform: uppercase; }
+  .severity.high { background: rgba(255,45,45,0.15); color: var(--accent); border: 1px solid rgba(255,45,45,0.3); }
+  .severity.medium { background: rgba(255,204,0,0.1); color: var(--accent2); border: 1px solid rgba(255,204,0,0.3); }
+  .severity.low { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+
+  .statements { display: grid; grid-template-columns: 1fr 1fr; position: relative; }
+  .statement { padding: 24px; }
+  .statement:first-child { border-right: 1px solid var(--border); }
+  .statement-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .statement-label.then::before { content: '◀'; color: var(--accent); font-size: 8px; }
+  .statement-label.now::before { content: '▶'; color: var(--green); font-size: 8px; }
+  .statement-date { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent2); margin-bottom: 10px; }
+  .statement-text { font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; line-height: 1.6; font-style: italic; }
+  .statement-source { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+
+  .vs-divider { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--accent); background: var(--surface); padding: 4px 8px; z-index: 10; border: 1px solid var(--border); }
+
+  .analysis { padding: 16px 20px; background: rgba(255,45,45,0.04); border-top: 1px solid var(--border); }
+  .analysis-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  .analysis-text { font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  .donor-bar { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border); background: var(--surface2); }
+  .donor-item { padding: 12px 20px; border-right: 1px solid var(--border); }
+  .donor-item:last-of-type { border-right: none; }
+  .donor-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .donor-value { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent2); line-height: 1.4; }
+  .donor-note { grid-column: 1 / -1; padding: 10px 20px; border-top: 1px solid var(--border); font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; color: var(--muted); font-style: italic; background: rgba(255,204,0,0.04); }
+
+  .share-btn-single { display: flex; align-items: center; gap: 6px; background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 8px 16px; cursor: pointer; transition: all 0.15s; margin: 10px 20px; }
+  .share-btn-single:hover { border-color: #1DA1F2; color: #1DA1F2; }
+  .share-btn-single svg { width: 12px; height: 12px; fill: currentColor; flex-shrink: 0; }
+
+  .error-box { display: none; background: rgba(255,45,45,0.08); border: 1px solid rgba(255,45,45,0.3); padding: 20px 24px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--accent); margin-bottom: 24px; }
+  .error-box.visible { display: block; }
+
+  .disclaimer { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); line-height: 1.8; }
+
+  @media (max-width: 640px) {
+    header { padding: 20px; }
+    main { padding: 32px 20px; }
+    .logo { font-size: 36px; }
+    .statements { grid-template-columns: 1fr; }
+    .statement:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+    .subject-name { font-size: 36px; }
+    .count-number { font-size: 48px; }
+    .networth-bar { grid-template-columns: 1fr; }
+    .donor-bar { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">FLIP<span>FLOP</span></div>
+    <div class="tagline">AI-Powered Political Contradiction Detector</div>
+  </div>
+  <div class="ticker">ANALYZING PUBLIC STATEMENTS <span>SINCE 2024</span></div>
+</header>
+
+<main>
+  <div class="search-section">
+    <div class="section-label">Target Subject</div>
+    <div class="search-row">
+      <input type="text" id="subjectInput" placeholder="Enter politician or public figure name..." />
+      <button class="btn" id="analyzeBtn" onclick="analyze()">EXPOSE</button>
+    </div>
+    <div class="topic-chips">
+      <span class="chip active" onclick="setTopic(this, 'all topics')">ALL TOPICS</span>
+      <span class="chip" onclick="setTopic(this, 'immigration')">IMMIGRATION</span>
+      <span class="chip" onclick="setTopic(this, 'economy & taxes')">ECONOMY</span>
+      <span class="chip" onclick="setTopic(this, 'healthcare')">HEALTHCARE</span>
+      <span class="chip" onclick="setTopic(this, 'foreign policy')">FOREIGN POLICY</span>
+      <span class="chip" onclick="setTopic(this, 'climate')">CLIMATE</span>
+      <span class="chip" onclick="setTopic(this, 'guns')">GUNS</span>
+    </div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="loading" id="loading">
+    <div class="loading-text" id="loadingText">SCANNING PUBLIC RECORD...</div>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="disclaimer">
+    FLIPFLOP uses AI and web search to analyze publicly available statements. Results are for informational purposes only.<br>
+    Always verify statements against primary sources. AI may make errors — check before sharing.
+  </div>
+</main>
+
+<script>
+  var selectedTopic = 'all topics';
+  var currentReportData = null;
+  var loadingInterval = null;
+
+  function setTopic(el, topic) {
+    document.querySelectorAll('.chip').forEach(function(c) { c.classList.remove('active'); });
+    el.classList.add('active');
+    selectedTopic = topic;
+  }
+
+  document.getElementById('subjectInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') analyze();
+  });
+
+  var loadingMessages = [
+    'SCANNING PUBLIC RECORD...',
+    'CROSS-REFERENCING STATEMENTS...',
+    'DETECTING CONTRADICTIONS...',
+    'SEARCHING DONOR RECORDS...',
+    'BUILDING CASE FILE...'
+  ];
+
+  function startLoadingMessages() {
+    var i = 0;
+    var el = document.getElementById('loadingText');
+    el.textContent = loadingMessages[0];
+    loadingInterval = setInterval(function() {
+      i = (i + 1) % loadingMessages.length;
+      el.textContent = loadingMessages[i];
+    }, 1800);
+  }
+
+  function stopLoadingMessages() {
+    if (loadingInterval) { clearInterval(loadingInterval); loadingInterval = null; }
+  }
+
+  function analyze() {
+    var subject = document.getElementById('subjectInput').value.trim();
+    if (!subject) { showError('Please enter a name to analyze.'); return; }
+
+    var btn = document.getElementById('analyzeBtn');
+    var loading = document.getElementById('loading');
+    var results = document.getElementById('results');
+    var errorBox = document.getElementById('errorBox');
+
+    btn.disabled = true;
+    errorBox.classList.remove('visible');
+    results.classList.remove('visible');
+    results.innerHTML = '';
+    loading.classList.add('visible');
+    startLoadingMessages();
+
+    var topicInstruction = selectedTopic === 'all topics'
+      ? 'Cover a range of different policy areas.'
+      : 'Focus specifically on the topic of: ' + selectedTopic + '.';
+
+    var prompt = 'You are a nonpartisan political research AI. Find real documented contradictions in public figures statements using web search. Be factual and neutral — no editorializing.\n\nSearch the web for documented statements and position changes by: ' + subject + '\nTopic filter: ' + topicInstruction + '\n\nFind up to 6 real well-documented contradictions. Use actual quotes from real sources. Do not fabricate quotes.\n\nAlso search for their net worth before politics vs current, and top donor industries from OpenSecrets or FEC.\n\nRespond ONLY with this exact JSON structure:\n{\n  "subject": "Full Name",\n  "title": "Current title or role",\n  "summary": "2-3 sentence neutral factual summary",\n  "networthBefore": "Net worth before politics with year or null",\n  "networthCurrent": "Current estimated net worth with year or null",\n  "networthSource": "Source for figures or null",\n  "topDonors": "Top 3 donor industries with amounts or null",\n  "contradictions": [\n    {\n      "topic": "TOPIC",\n      "severity": "high",\n      "statement1": {"date": "Month Year", "text": "Quote", "source": "Source"},\n      "statement2": {"date": "Month Year", "text": "Contradicting quote", "source": "Source"},\n      "analysis": "One neutral sentence on what changed",\n      "donors": {"before": "Funding then or null", "after": "Funding after or null", "note": "Neutral link between money and flip or null"}\n    }\n  ]\n}\n\nSeverity options: high, medium, low\nIf not a known public figure return empty contradictions array.\nReturn ONLY the JSON object, no other text.';
+
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    })
+    .then(function(response) {
+      return response.json().then(function(data) {
+        if (!response.ok) throw new Error(data.error ? data.error.message : 'API error ' + response.status);
+        return data;
+      });
+    })
+    .then(function(data) {
+      var textBlock = null;
+      for (var i = 0; i < data.content.length; i++) {
+        if (data.content[i].type === 'text') { textBlock = data.content[i]; break; }
+      }
+      if (!textBlock) throw new Error('No text response received');
+
+      var rawText = textBlock.text.replace(/```json|```/g, '').trim();
+      var s = rawText.indexOf('{');
+      var e = rawText.lastIndexOf('}');
+      if (s === -1 || e === -1) throw new Error('Could not find JSON in response');
+
+      var parsed = JSON.parse(rawText.slice(s, e + 1));
+      stopLoadingMessages();
+      loading.classList.remove('visible');
+      renderResults(parsed);
+    })
+    .catch(function(err) {
+      stopLoadingMessages();
+      loading.classList.remove('visible');
+      showError('Analysis failed: ' + err.message);
+      btn.disabled = false;
+    });
+  }
+
+  function showError(msg) {
+    var box = document.getElementById('errorBox');
+    box.textContent = '⚠ ' + msg;
+    box.classList.add('visible');
+  }
+
+  function renderResults(data) {
+    currentReportData = data;
+    var btn = document.getElementById('analyzeBtn');
+    var results = document.getElementById('results');
+    var count = data.contradictions ? data.contradictions.length : 0;
+    var html = '';
+
+    // Header
+    html += '<div class="results-header">';
+    html += '<div><div class="subject-name">' + esc(data.subject) + '</div>';
+    html += '<div class="tagline" style="margin-top:8px">' + esc(data.title || '') + '</div></div>';
+    html += '<div class="contradiction-count"><div class="count-number">' + count + '</div>';
+    html += '<div class="count-label">CONTRADICTIONS FOUND</div></div></div>';
+
+    // Share bar
+    html += '<div class="share-bar">';
+    html += '<button class="share-btn" onclick="shareAll()"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.766l7.416-8.235L1.107 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>SHARE FULL REPORT</button>';
+    html += '<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;">OR SHARE INDIVIDUAL CONTRADICTIONS BELOW ↓</span>';
+    html += '</div>';
+
+    // Net worth
+    if (data.networthBefore || data.networthCurrent) {
+      html += '<div class="section-label">Wealth Before &amp; After Politics</div>';
+      html += '<div class="networth-bar">';
+      html += '<div class="networth-item"><div class="networth-label">Before Politics</div><div class="networth-value before">' + esc(data.networthBefore || 'Unknown') + '</div></div>';
+      html += '<div class="networth-item"><div class="networth-label">Current Net Worth</div><div class="networth-value current">' + esc(data.networthCurrent || 'Unknown') + '</div></div>';
+      if (data.networthSource) html += '<div class="networth-source">📎 ' + esc(data.networthSource) + '</div>';
+      html += '</div>';
+    }
+
+    // Top donors
+    if (data.topDonors) {
+      html += '<div class="section-label">Top Donor Industries (Career Total)</div>';
+      html += '<div class="top-donors-bar"><div class="top-donors-value">' + esc(data.topDonors) + '</div></div>';
+    }
+
+    // Summary
+    html += '<div class="summary-box"><div class="section-label">Public Record Summary</div>';
+    html += '<div class="summary-text">' + esc(data.summary) + '</div></div>';
+
+    // Contradictions
+    if (count === 0) {
+      html += '<div class="summary-box" style="border-top-color:var(--green)"><div class="summary-text" style="color:var(--green)">No significant contradictions detected in the public record for this figure.</div></div>';
+    } else {
+      html += '<div class="section-label">Contradictions Detected (' + count + ')</div>';
+      for (var i = 0; i < data.contradictions.length; i++) {
+        var c = data.contradictions[i];
+        var t1 = (c.statement1.text || '').substring(0, 100);
+        var t2 = (c.statement2.text || '').substring(0, 100);
+
+        html += '<div class="contradiction-card" style="animation-delay:' + (i * 0.1) + 's">';
+        html += '<div class="card-header"><div class="card-topic">' + esc(c.topic) + '</div>';
+        html += '<div class="severity ' + esc(c.severity) + '">' + esc(c.severity) + ' contradiction</div></div>';
+
+        html += '<div class="statements">';
+        html += '<div class="statement"><div class="statement-label then">THEN</div>';
+        html += '<div class="statement-date">' + esc(c.statement1.date) + '</div>';
+        html += '<div class="statement-text">&ldquo;' + esc(c.statement1.text) + '&rdquo;</div>';
+        html += '<div class="statement-source">📎 ' + esc(c.statement1.source) + '</div></div>';
+        html += '<div class="vs-divider">VS</div>';
+        html += '<div class="statement"><div class="statement-label now">NOW</div>';
+        html += '<div class="statement-date">' + esc(c.statement2.date) + '</div>';
+        html += '<div class="statement-text">&ldquo;' + esc(c.statement2.text) + '&rdquo;</div>';
+        html += '<div class="statement-source">📎 ' + esc(c.statement2.source) + '</div></div>';
+        html += '</div>';
+
+        html += '<div class="analysis"><div class="analysis-label">// Analysis</div>';
+        html += '<div class="analysis-text">' + esc(c.analysis) + '</div></div>';
+
+        if (c.donors && (c.donors.before || c.donors.after)) {
+          html += '<div class="donor-bar">';
+          if (c.donors.before) html += '<div class="donor-item"><div class="donor-label">Funded by (then)</div><div class="donor-value">' + esc(c.donors.before) + '</div></div>';
+          if (c.donors.after) html += '<div class="donor-item"><div class="donor-label">Funded by (now)</div><div class="donor-value">' + esc(c.donors.after) + '</div></div>';
+          if (c.donors.note) html += '<div class="donor-note">🔗 ' + esc(c.donors.note) + '</div>';
+          html += '</div>';
+        }
+
+        html += '<div style="padding:10px 20px;border-top:1px solid var(--border);background:var(--surface2)">';
+        html += '<button class="share-btn-single" onclick="shareOne(' + i + ')">';
+        html += '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.766l7.416-8.235L1.107 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>';
+        html += 'SHARE THIS CONTRADICTION</button></div>';
+        html += '</div>';
+      }
+    }
+
+    results.innerHTML = html;
+    results.classList.add('visible');
+    btn.disabled = false;
+  }
+
+  function shareAll() {
+    if (!currentReportData) return;
+    var d = currentReportData;
+    var count = d.contradictions ? d.contradictions.length : 0;
+    var first = d.contradictions && d.contradictions[0];
+    var text = '🚨 ' + d.subject + ' — ' + count + ' contradiction' + (count !== 1 ? 's' : '') + ' found\n\n';
+    if (first) {
+      text += '📌 ' + first.topic + '\n';
+      text += 'THEN (' + first.statement1.date + '): "' + first.statement1.text.substring(0, 80) + '..."\n';
+      text += 'NOW (' + first.statement2.date + '): "' + first.statement2.text.substring(0, 80) + '..."\n\n';
+    }
+    if (d.networthBefore && d.networthCurrent) text += '💰 Net worth: ' + d.networthBefore + ' → ' + d.networthCurrent + '\n\n';
+    text += '#FlipFlop #Accountability #' + d.subject.replace(/\s+/g, '') + '\nflipflop.io';
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'width=600,height=400');
+  }
+
+  function shareOne(index) {
+    if (!currentReportData || !currentReportData.contradictions) return;
+    var d = currentReportData;
+    var c = d.contradictions[index];
+    var t1 = (c.statement1.text || '').substring(0, 100);
+    var t2 = (c.statement2.text || '').substring(0, 100);
+    var tweet = '🚨 ' + d.subject + ' CONTRADICTION — ' + c.topic + '\n\n';
+    tweet += 'THEN (' + c.statement1.date + '): "' + t1 + (t1.length >= 100 ? '...' : '') + '"\n\n';
+    tweet += 'NOW (' + c.statement2.date + '): "' + t2 + (t2.length >= 100 ? '...' : '') + '"\n\n';
+    tweet += '#FlipFlop #Accountability #' + d.subject.replace(/\s+/g, '') + '\nflipflop.io';
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(tweet), '_blank', 'width=600,height=400');
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+</script>
+</body>
+</html>
