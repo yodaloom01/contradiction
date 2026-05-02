@@ -247,16 +247,10 @@
 
     var prompt = 'You are a nonpartisan political research AI. Find real documented contradictions in public figures statements using web search. Be factual and neutral — no editorializing.\n\nSearch the web for documented statements and position changes by: ' + subject + '\nTopic filter: ' + topicInstruction + '\n\nFind up to 6 real well-documented contradictions. Use actual quotes from real sources. Do not fabricate quotes.\n\nAlso search for their net worth before politics vs current, and top donor industries from OpenSecrets or FEC.\n\nRespond ONLY with this exact JSON structure:\n{\n  "subject": "Full Name",\n  "title": "Current title or role",\n  "summary": "2-3 sentence neutral factual summary",\n  "networthBefore": "Net worth before politics with year or null",\n  "networthCurrent": "Current estimated net worth with year or null",\n  "networthSource": "Source for figures or null",\n  "topDonors": "Top 3 donor industries with amounts or null",\n  "contradictions": [\n    {\n      "topic": "TOPIC",\n      "severity": "high",\n      "statement1": {"date": "Month Year", "text": "Quote", "source": "Source"},\n      "statement2": {"date": "Month Year", "text": "Contradicting quote", "source": "Source"},\n      "analysis": "One neutral sentence on what changed",\n      "donors": {"before": "Funding then or null", "after": "Funding after or null", "note": "Neutral link between money and flip or null"}\n    }\n  ]\n}\n\nSeverity options: high, medium, low\nIf not a known public figure return empty contradictions array.\nReturn ONLY the JSON object, no other text.';
 
-    fetch('https://api.anthropic.com/v1/messages', {
+    fetch('/api/analyze', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       })
     })
