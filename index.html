@@ -123,6 +123,20 @@
   .donor-value { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent2); line-height: 1.4; }
   .donor-note { grid-column: 1 / -1; padding: 10px 20px; border-top: 1px solid var(--border); font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; color: var(--muted); font-style: italic; background: rgba(255,204,0,0.04); }
 
+  .verify-btn {
+    background: none;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    cursor: pointer;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .verify-btn:hover { border-color: #1DA1F2; color: #1DA1F2; }
+
   .share-btn-single { display: flex; align-items: center; gap: 6px; background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 8px 16px; cursor: pointer; transition: all 0.15s; margin: 10px 20px; }
   .share-btn-single:hover { border-color: #1DA1F2; color: #1DA1F2; }
   .share-btn-single svg { width: 12px; height: 12px; fill: currentColor; flex-shrink: 0; }
@@ -352,14 +366,14 @@
         html += '<div class="statement-date">' + esc(c.statement1.date) + '</div>';
         html += '<div class="statement-text">&ldquo;' + esc(c.statement1.text) + '&rdquo;</div>';
         html += '<div class="statement-source">📎 ' + esc(c.statement1.source);
-        html += ' <button onclick="verify(' + JSON.stringify(c.statement1.text) + ')" style="background:none;border:1px solid var(--muted);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;cursor:pointer;margin-left:8px;" onmouseover="this.style.borderColor=\'#1DA1F2\';this.style.color=\'#1DA1F2\'" onmouseout="this.style.borderColor=\'var(--muted)\';this.style.color=\'var(--muted)\'">🔍 VERIFY</button>';
+        html += ' <button data-quote="' + esc(c.statement1.text) + '" class="verify-btn">🔍 VERIFY</button>';
         html += '</div></div>';
         html += '<div class="vs-divider">VS</div>';
         html += '<div class="statement"><div class="statement-label now">NOW</div>';
         html += '<div class="statement-date">' + esc(c.statement2.date) + '</div>';
         html += '<div class="statement-text">&ldquo;' + esc(c.statement2.text) + '&rdquo;</div>';
         html += '<div class="statement-source">📎 ' + esc(c.statement2.source);
-        html += ' <button onclick="verify(' + JSON.stringify(c.statement2.text) + ')" style="background:none;border:1px solid var(--muted);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;cursor:pointer;margin-left:8px;" onmouseover="this.style.borderColor=\'#1DA1F2\';this.style.color=\'#1DA1F2\'" onmouseout="this.style.borderColor=\'var(--muted)\';this.style.color=\'var(--muted)\'">🔍 VERIFY</button>';
+        html += ' <button data-quote="' + esc(c.statement2.text) + '" class="verify-btn">🔍 VERIFY</button>';
         html += '</div></div>';
         html += '</div>';
 
@@ -385,6 +399,16 @@
     results.innerHTML = html;
     results.classList.add('visible');
     btn.disabled = false;
+
+    // Attach verify button handlers via event delegation
+    results.addEventListener('click', function(e) {
+      if (e.target.classList.contains('verify-btn')) {
+        var quote = e.target.getAttribute('data-quote');
+        var subject = currentReportData ? currentReportData.subject : '';
+        var searchQuery = subject + ' "' + quote.substring(0, 80) + '"';
+        window.open('https://www.google.com/search?q=' + encodeURIComponent(searchQuery), '_blank');
+      }
+    });
   }
 
   function shareAll() {
