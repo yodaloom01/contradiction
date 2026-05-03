@@ -261,6 +261,8 @@
       });
     })
     .then(function(data) {
+      if (data.error) throw new Error(data.error.message || data.error);
+
       var textBlock = null;
       for (var i = 0; i < data.content.length; i++) {
         if (data.content[i].type === 'text') { textBlock = data.content[i]; break; }
@@ -349,12 +351,16 @@
         html += '<div class="statement"><div class="statement-label then">THEN</div>';
         html += '<div class="statement-date">' + esc(c.statement1.date) + '</div>';
         html += '<div class="statement-text">&ldquo;' + esc(c.statement1.text) + '&rdquo;</div>';
-        html += '<div class="statement-source">📎 ' + esc(c.statement1.source) + '</div></div>';
+        html += '<div class="statement-source">📎 ' + esc(c.statement1.source);
+        html += ' <button onclick="verify(' + JSON.stringify(c.statement1.text) + ')" style="background:none;border:1px solid var(--muted);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;cursor:pointer;margin-left:8px;" onmouseover="this.style.borderColor=\'#1DA1F2\';this.style.color=\'#1DA1F2\'" onmouseout="this.style.borderColor=\'var(--muted)\';this.style.color=\'var(--muted)\'">🔍 VERIFY</button>';
+        html += '</div></div>';
         html += '<div class="vs-divider">VS</div>';
         html += '<div class="statement"><div class="statement-label now">NOW</div>';
         html += '<div class="statement-date">' + esc(c.statement2.date) + '</div>';
         html += '<div class="statement-text">&ldquo;' + esc(c.statement2.text) + '&rdquo;</div>';
-        html += '<div class="statement-source">📎 ' + esc(c.statement2.source) + '</div></div>';
+        html += '<div class="statement-source">📎 ' + esc(c.statement2.source);
+        html += ' <button onclick="verify(' + JSON.stringify(c.statement2.text) + ')" style="background:none;border:1px solid var(--muted);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;cursor:pointer;margin-left:8px;" onmouseover="this.style.borderColor=\'#1DA1F2\';this.style.color=\'#1DA1F2\'" onmouseout="this.style.borderColor=\'var(--muted)\';this.style.color=\'var(--muted)\'">🔍 VERIFY</button>';
+        html += '</div></div>';
         html += '</div>';
 
         html += '<div class="analysis"><div class="analysis-label">// Analysis</div>';
@@ -408,6 +414,13 @@
     tweet += 'NOW (' + c.statement2.date + '): "' + t2 + (t2.length >= 100 ? '...' : '') + '"\n\n';
     tweet += '#FlipFlop #Accountability #' + d.subject.replace(/\s+/g, '') + '\nflipflop.io';
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(tweet), '_blank', 'width=600,height=400');
+  }
+
+  function verify(quote) {
+    var q = quote.substring(0, 100);
+    var subject = currentReportData ? currentReportData.subject : '';
+    var searchQuery = subject + ' "' + q + '"';
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(searchQuery), '_blank');
   }
 
   function esc(str) {
